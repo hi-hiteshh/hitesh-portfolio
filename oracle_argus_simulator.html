@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle Argus Safety Simulator | Hitesh Dharmadhikari</title>
+    
+    <style>
+        :root { 
+            --argus-blue: #004a80; 
+            --oracle-red: #c74634; 
+            --success: #28a745; 
+            --error: #dc3545; 
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            font-size: 11px; 
+            margin: 0; 
+            height: 100vh; 
+            overflow: hidden; 
+            background: #333; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        #app-content { display: flex; width: 100%; height: 100%; flex-direction: column; }
+
+        .nav-bar { background: linear-gradient(to bottom, #fff, #e6e6e6); height: 35px; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid #999; justify-content: space-between; flex-shrink: 0; }
+        .nav-brand { font-weight: bold; color: #333; display: flex; gap: 5px; align-items: center; font-size: 13px; }
+        .nav-brand span { color: var(--oracle-red); font-weight: 900; }
+        .nav-btn { cursor: pointer; padding: 4px 10px; border: 1px solid #999; border-radius: 3px; background: #eee; margin-left: 10px; font-size: 11px; }
+        .nav-btn:hover { background: #fff; border-color: var(--argus-blue); }
+
+        .view-section { display: none; height: calc(100vh - 35px); width: 100%; }
+        .view-section.active { display: flex; }
+
+        #dashboard-view { background: #e0e0e0; flex-direction: column; padding: 20px; overflow-y: auto; }
+        .dash-card { background: white; border-radius: 5px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .dash-header { font-size: 16px; font-weight: bold; color: var(--argus-blue); border-bottom: 2px solid var(--argus-blue); padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: var(--argus-blue); color: white; text-align: left; padding: 8px; }
+        td { border-bottom: 1px solid #ccc; padding: 8px; vertical-align: middle; }
+        tr:hover { background: #f5f5f5; }
+        .action-btn { background: var(--oracle-red); color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-size: 11px; }
+        .action-btn:hover { background: #a33222; }
+        .review-btn { background: var(--argus-blue); color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-size: 11px; }
+        .review-btn:hover { background: #003060; }
+        .status-done { color: var(--success); font-weight: bold; }
+        .storage-badge { display: inline-block; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; border-radius: 10px; padding: 2px 8px; font-size: 10px; font-weight: bold; }
+        .reset-link { font-size: 10px; color: #999; cursor: pointer; text-decoration: underline; }
+        .reset-link:hover { color: var(--oracle-red); }
+
+        .source-monitor { width: 35%; background: #444; padding: 10px; border-right: 3px solid #000; display: flex; flex-direction: column; }
+        .doc-viewer { background: #fff; flex: 1; border: 1px solid #000; padding: 20px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.4; }
+        
+        .argus-monitor { flex: 1; display: flex; flex-direction: column; background: #f0f0f0; overflow: hidden; }
+        .argus-header { background: #fff; border-bottom: 2px solid var(--argus-blue); padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .argus-toolbar { background: #e3eff9; padding: 5px; border-bottom: 1px solid #999; display: flex; gap: 10px; flex-shrink: 0; }
+        .tool-btn { border: 1px solid transparent; padding: 3px 12px; cursor: pointer; display: flex; flex-direction: column; align-items: center; opacity: 0.9; font-size: 11px; color: #333; }
+        .tool-btn:hover { background: #fff; border: 1px solid #999; opacity: 1; border-radius: 3px; }
+        .tool-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+        .argus-body { display: flex; flex: 1; overflow: hidden; }
+        .tree-view { width: 180px; background: white; border-right: 1px solid #999; padding: 5px; overflow-y: auto; flex-shrink: 0; }
+        .tree-item { padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 5px; }
+        .tree-item.active { background: var(--argus-blue); color: white; }
+        
+        .form-area { flex: 1; padding: 15px; overflow-y: auto; background: #f5f5f5; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        fieldset { background: white; border: 1px solid #999; margin-bottom: 15px; padding: 15px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+        legend { color: var(--argus-blue); font-weight: bold; }
+        .row { display: flex; margin-bottom: 8px; align-items: center; }
+        .lbl { width: 130px; text-align: right; padding-right: 10px; font-weight: bold; color: #444; flex-shrink: 0; }
+        input, select, textarea { border: 1px solid #999; padding: 4px; font-family: Tahoma; width: 220px; font-size: 11px; }
+        input:focus, select:focus { border-color: var(--argus-blue); outline: none; }
+
+        .readonly-mode input,
+        .readonly-mode select,
+        .readonly-mode textarea {
+            background: #f0f0f0 !important;
+            color: #333 !important;
+            border: 1px solid #bbb !important;
+            pointer-events: none;
+        }
+        .readonly-banner {
+            background: #fff3cd; border: 1px solid #ffc107; color: #856404;
+            padding: 8px 14px; font-weight: bold; font-size: 12px;
+            display: none; align-items: center; gap: 8px; flex-shrink: 0;
+        }
+        .readonly-banner.show { display: flex; }
+
+        .input-correct { border: 2px solid var(--success) !important; background-color: #e8f5e9 !important; }
+        .input-wrong   { border: 2px solid var(--error)   !important; background-color: #f8d7da !important; }
+
+        #qc-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 500px; background: white; border: 2px solid var(--argus-blue); box-shadow: 0 0 20px rgba(0,0,0,0.5); z-index: 1000; padding: 20px; max-height: 80vh; overflow-y: auto; }
+        .qc-item { margin-bottom: 8px; border-bottom: 1px dotted #ccc; padding-bottom: 4px; }
+        .qc-label { font-weight: bold; width: 120px; display: inline-block; }
+        .qc-expected { color: var(--success); font-weight: bold; }
+        .qc-actual { color: var(--error); text-decoration: line-through; margin-right: 10px; }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
+        .tip-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; font-size: 11px; color: #856404; margin-bottom: 10px; border-radius: 4px; }
+
+        .review-summary { background: #e8f5e9; border: 1px solid #c3e6cb; border-radius: 6px; padding: 14px 18px; margin-bottom: 16px; }
+        .review-summary h3 { color: #155724; margin: 0 0 10px; font-size: 13px; }
+        .review-row { display: flex; gap: 8px; margin-bottom: 5px; font-size: 12px; }
+        .review-key { font-weight: bold; color: #555; width: 130px; flex-shrink: 0; }
+        .review-val { color: #222; }
+    </style>
+</head>
+<body>
+
+<div id="app-content">
+    <div class="nav-bar">
+        <div class="nav-brand">
+            <span style="font-size:16px;">🔴</span> ORACLE Argus Safety | Simulator
+        </div>
+        <div style="display:flex;align-items:center;">
+            <span class="nav-btn" onclick="showDashboard()">🏠 Dashboard</span>
+            <span style="font-weight:bold;color:var(--argus-blue);margin-left:15px;border-left:1px solid #999;padding-left:10px;font-size:11px;">
+                👤 Demo Mode — Hitesh Dharmadhikari
+            </span>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="view-section active">
+        <div class="dash-card">
+            <div class="dash-header">📥 Worklist (Available Cases)</div>
+            <div style="margin-bottom:15px;padding:10px;border-radius:5px;background:#d4edda;color:#155724;font-weight:bold;font-size:12px;">
+                Welcome to the Argus Safety Simulation. Select a case below to begin data entry.
+            </div>
+            <table>
+                <thead><tr><th>Case ID</th><th>Source Type</th><th>Complexity</th><th>Action</th></tr></thead>
+                <tbody id="pending-table-body"></tbody>
+            </table>
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-header">
+                <span>✅ Completed Cases</span>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span class="storage-badge" id="storage-badge">💾 Auto-Saved</span>
+                    <span class="reset-link" onclick="resetAllData()">🗑️ Reset progress</span>
+                </div>
+            </div>
+            <table>
+                <thead><tr><th>Case ID</th><th>Patient</th><th>Product</th><th>MedDRA PT</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="completed-table-body">
+                    <tr><td colspan="6" style="text-align:center;color:#888;">No cases completed yet.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- WORKSTATION -->
+    <div id="workstation-view" class="view-section">
+        <div class="source-monitor">
+            <div style="color:white;font-weight:bold;padding-bottom:5px;font-size:12px;">📄 SOURCE DOCUMENT</div>
+            <div class="doc-viewer" id="doc-content"></div>
+            <button onclick="showDashboard()" style="width:100%;margin-top:10px;padding:8px;cursor:pointer;font-size:12px;">🔙 Back to Worklist</button>
+        </div>
+
+        <div class="argus-monitor">
+            <div class="argus-header">
+                <div class="nav-brand">ORACLE <span style="color:#d32f2f;font-style:italic;margin-left:5px;">Argus Safety</span></div>
+                <div id="active-case-id" style="font-weight:bold;color:#444;font-size:12px;">Case: Not Loaded</div>
+            </div>
+
+            <div class="readonly-banner" id="readonly-banner">
+                👁️ READ-ONLY MODE — Reviewing a completed & locked case. All data entered is saved below.
+            </div>
+
+            <div class="argus-toolbar">
+                <div class="tool-btn" id="btn-qc"   onclick="runQC()">     <span>🔎</span><b>Run QC</b></div>
+                <div class="tool-btn" id="btn-code" onclick="autoCode()">  <span>📚</span>MedDRA Coding</div>
+                <div class="tool-btn" id="btn-save" onclick="finishCase()"><span>💾</span>Save &amp; Exit</div>
+            </div>
+
+            <div class="argus-body">
+                <div class="tree-view">
+                    <div id="tab-gen"  class="tree-item active" onclick="setTab('gen')">📁 General</div>
+                    <div id="tab-pat"  class="tree-item"        onclick="setTab('pat')">👤 Patient</div>
+                    <div id="tab-prod" class="tree-item"        onclick="setTab('prod')">💊 Products</div>
+                    <div id="tab-evt"  class="tree-item"        onclick="setTab('evt')">⚡ Events</div>
+                    <div id="tab-nar"  class="tree-item"        onclick="setTab('nar')" style="border-top:1px solid #ccc;background:#fffbe6;">📝 Narrative</div>
+                </div>
+
+                <div class="form-area" id="main-form-area">
+
+                    <!-- Review summary shown at top when in read-only mode -->
+                    <div id="review-summary-box" class="review-summary" style="display:none;">
+                        <h3>✅ Completed &amp; Locked Case — Full Summary</h3>
+                        <div id="review-summary-content"></div>
+                    </div>
+
+                    <!-- GENERAL -->
+                    <div id="gen" class="panel active">
+                        <fieldset><legend>General Information</legend>
+                            <div class="row"><div class="lbl">Receipt Date:</div><input type="date" id="in_date"></div>
+                            <div class="row"><div class="lbl">Country:</div>
+                                <select id="in_country">
+                                    <option value="">--Select--</option>
+                                    <option value="US">USA</option><option value="UK">UK</option>
+                                    <option value="IN">India</option><option value="DE">Germany</option>
+                                    <option value="FR">France</option><option value="JP">Japan</option>
+                                    <option value="AU">Australia</option><option value="CA">Canada</option>
+                                    <option value="BR">Brazil</option><option value="CN">China</option>
+                                    <option value="ZA">South Africa</option>
+                                </select>
+                            </div>
+                            <div class="row"><div class="lbl">Report Type:</div>
+                                <select id="in_type">
+                                    <option value="Spontaneous">Spontaneous</option>
+                                    <option value="Clinical Trial">Clinical Trial</option>
+                                    <option value="Literature">Literature</option>
+                                    <option value="Periodic Safety Update">PSUR</option>
+                                    <option value="Legal">Legal</option>
+                                </select>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- PATIENT -->
+                    <div id="pat" class="panel">
+                        <fieldset><legend>Patient Information</legend>
+                            <div class="row"><div class="lbl">Initials:</div><input type="text" id="in_init"></div>
+                            <div class="row"><div class="lbl">Age:</div><input type="number" id="in_age"></div>
+                            <div class="row"><div class="lbl">Gender:</div>
+                                <select id="in_gen">
+                                    <option value="">--Select--</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Unknown">Unknown</option>
+                                </select>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- PRODUCTS -->
+                    <div id="prod" class="panel">
+                        <fieldset><legend>Suspect Product</legend>
+                            <div class="row"><div class="lbl">Product Name:</div><input type="text" id="in_prod"></div>
+                            <div class="row"><div class="lbl">Indication:</div><input type="text" id="in_ind"></div>
+                        </fieldset>
+                    </div>
+
+                    <!-- EVENTS -->
+                    <div id="evt" class="panel">
+                        <fieldset><legend>Event Information</legend>
+                            <div class="row"><div class="lbl">Reported Term:</div><input type="text" id="in_llt"></div>
+                            <div class="row"><div class="lbl">PT (Coded):</div><input type="text" id="in_pt" readonly style="background:#eee;"></div>
+                            <div class="row"><div class="lbl">Seriousness:</div>
+                                <select id="in_serious">
+                                    <option value="No">Non-Serious</option>
+                                    <option value="Yes">Serious (SAE)</option>
+                                </select>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- NARRATIVE -->
+                    <div id="nar" class="panel">
+                        <fieldset><legend>Case Narrative</legend>
+                            <div class="tip-box" id="nar-tip">
+                                <b>GUIDANCE:</b> Use this structure: <i>"This case involves a [AGE]-year-old [GENDER] patient from [COUNTRY] who experienced [EVENT] after taking [DRUG]. Action: [ACTION]. Outcome: [OUTCOME]."</i>
+                            </div>
+                            <button id="nar-template-btn" onclick="insertTemplate()" style="margin-bottom:10px;padding:5px 10px;background:#28a745;color:white;border:none;cursor:pointer;border-radius:3px;font-size:11px;">✨ Insert Template</button>
+                            <br>
+                            <textarea id="in_narrative" rows="15" style="width:95%;padding:10px;font-family:Tahoma;font-size:11px;" placeholder="Type the case summary here..."></textarea>
+                        </fieldset>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- QC MODAL -->
+<div class="overlay" id="overlay"></div>
+<div id="qc-modal">
+    <div style="font-size:16px;font-weight:bold;color:var(--argus-blue);margin-bottom:10px;">Validation Report</div>
+    <div id="qc-content"></div>
+    <button onclick="closeQC()" style="margin-top:15px;padding:8px 20px;background:var(--argus-blue);color:white;border:none;cursor:pointer;border-radius:3px;">Close Report</button>
+</div>
+
+<script>
+    const STORAGE_KEY = "argus_sim_v3_cases";
+
+    const allCases = [
+        { id:"US-2025-010", type:"Email",        complexity:"Low",    docText:"E-mail from outpatient clinic\nDate: 2025-04-05\nPatient AB (F, 28) presented with severe nausea and vomiting after starting ZOPICLONE 7.5 mg. Symptoms began within 24 hours.", truth:{date:"2025-04-05",country:"US",type:"Spontaneous",init:"AB",age:"28",gen:"Female",prod:"ZOPICLONE",llt:"NAUSEA AND VOMITING",pt:"Nausea",serious:"No"} },
+        { id:"IN-2025-001", type:"Email",        complexity:"Low",    docText:"FROM: Dr. Smith (Boston Clinic)\nDATE: 2025-01-15\nPatient JS (Male, 45 years) prescribed AMOXICILLIN. Two days later developed mild SKIN RASH. Action: Drug stopped. Patient recovered.", truth:{date:"2025-01-15",country:"US",type:"Spontaneous",init:"JS",age:"45",gen:"Male",prod:"AMOXICILLIN",llt:"SKIN RASH",pt:"Rash",serious:"No"} },
+        { id:"IN-2025-212", type:"Hospital Note",complexity:"Medium", docText:"Hospital discharge summary\nDate: 2025-05-18\nPatient: R.K., Male, 52 yrs.\nDrug: AMLODIPINE 5 mg daily.\nEvent: Developed peripheral edema; mild but persistent.", truth:{date:"2025-05-18",country:"IN",type:"Spontaneous",init:"RK",age:"52",gen:"Male",prod:"AMLODIPINE",llt:"PERIPHERAL EDEMA",pt:"Peripheral swelling",serious:"No"} },
+        { id:"CA-2025-708", type:"Email",        complexity:"Low",    docText:"Reporting from community pharmacist\nDate: 2025-09-22\nPatient: J.D. (M, 33)\nDrug: LEVOTHYROXINE\nEvent: Palpitations and tremor after dose increase.", truth:{date:"2025-09-22",country:"CA",type:"Spontaneous",init:"JD",age:"33",gen:"Male",prod:"LEVOTHYROXINE",llt:"PALPITATIONS",pt:"Palpitations",serious:"No"} },
+        { id:"UK-2025-889", type:"Fax",          complexity:"High",   docText:"URGENT SAFETY REPORT - FAX\nReceived: 2025-02-20\nPatient: Female, 30 yrs. Drug: IBUPROFEN 400mg.\nEvent: Patient took drug at 9AM. By 10AM, suffered ANAPHYLACTIC SHOCK. Hospitalized for 2 days.", truth:{date:"2025-02-20",country:"UK",type:"Spontaneous",init:"UNKNOWN",age:"30",gen:"Female",prod:"IBUPROFEN",llt:"ANAPHYLACTIC SHOCK",pt:"Anaphylactic shock",serious:"Yes"} },
+        { id:"DE-CT-554",   type:"Clin Trial",   complexity:"Medium", docText:"CLINICAL TRIAL SAE REPORT\nProtocol: 999-XYZ\nCenter: Berlin, Germany\nDate: 2025-03-10\nSubject: MK. Age: 60. Sex: Male\nIMP: INVESTIGATIONAL DRUG X\nEvent: MYOCARDIAL INFARCTION. Outcome: Fatal.", truth:{date:"2025-03-10",country:"DE",type:"Clinical Trial",init:"MK",age:"60",gen:"Male",prod:"INVESTIGATIONAL DRUG X",llt:"MYOCARDIAL INFARCTION",pt:"Myocardial infarction",serious:"Yes"} },
+        { id:"FR-2025-333", type:"Fax",          complexity:"High",   docText:"URGENT: Pharmacovigilance\nReceived: 2025-06-02\nPatient: Mlle. L (F, 19)\nDrug: OCP (Combined oral contraceptive)\nEvent: Pulmonary embolism confirmed by CT. Hospitalized and anticoagulated.", truth:{date:"2025-06-02",country:"FR",type:"Spontaneous",init:"L",age:"19",gen:"Female",prod:"COMBINED ORAL CONTRACEPTIVE",llt:"PULMONARY EMBOLISM",pt:"Pulmonary embolism",serious:"Yes"} },
+        { id:"JP-2025-404", type:"Email",        complexity:"Medium", docText:"Clinic note\nDate: 2025-07-20\nPatient: S.T. (M, 67)\nDrug: STATIN X\nEvent: Elevated ALT/AST and jaundice. Admitted for observation.", truth:{date:"2025-07-20",country:"JP",type:"Spontaneous",init:"ST",age:"67",gen:"Male",prod:"STATIN X",llt:"HEPATIC INJURY",pt:"Hepatic function abnormal",serious:"Yes"} },
+        { id:"AU-2025-607", type:"Clin Trial",   complexity:"High",   docText:"Clinical trial safety report\nProtocol: AU-TR-01\nDate: 2025-09-10\nSubject: PZ. Age: 49. Sex: Female\nProduct: BIOLOGIC Y\nEvent: Severe infusion reaction with hypotension; ICU required.", truth:{date:"2025-09-10",country:"AU",type:"Clinical Trial",init:"PZ",age:"49",gen:"Female",prod:"BIOLOGIC Y",llt:"INFUSION REACTION",pt:"Infusion-related reaction",serious:"Yes"} },
+        { id:"BR-2025-809", type:"Fax",          complexity:"Medium", docText:"Hospital report\nDate: 2025-10-05\nPatient: Unknown initials, Male, 41\nDrug: NON-STEROIDAL ANALGESIC\nEvent: Acute renal failure after overdose; dialysis required.", truth:{date:"2025-10-05",country:"BR",type:"Spontaneous",init:"UNKNOWN",age:"41",gen:"Male",prod:"NSAID",llt:"ACUTE RENAL FAILURE",pt:"Acute renal failure",serious:"Yes"} },
+        { id:"ZA-2025-011", type:"Email",        complexity:"Low",    docText:"Clinic email\nDate: 2025-11-05\nPatient: M.G. (M, 72)\nDrug: WARFARIN\nEvent: Major GI bleed requiring transfusion and admission.", truth:{date:"2025-11-05",country:"ZA",type:"Spontaneous",init:"MG",age:"72",gen:"Male",prod:"WARFARIN",llt:"GASTROINTESTINAL HAEMORRHAGE",pt:"Gastrointestinal haemorrhage",serious:"Yes"} },
+        { id:"US-2025-120", type:"Literature",   complexity:"High",   docText:"Published case report\nJournal: Cardio Safety, 2025-06\nReport Date: 2025-06-12\nCase: 58-year-old female developed QT prolongation and syncope after starting ANTIPSYCHOTIC Z. QTc 540 ms.", truth:{date:"2025-06-12",country:"US",type:"Literature",init:"UNKNOWN",age:"58",gen:"Female",prod:"ANTIPSYCHOTIC Z",llt:"QT PROLONGATION",pt:"Electrocardiogram QT prolonged",serious:"Yes"} },
+        { id:"JP-2025-164", type:"Clin Trial",   complexity:"High",   docText:"Phase II trial SAE report\nDate: 2025-07-28. Site: Tokyo\nSubject: HN. Age: 34. Sex: Female\nProduct: RNA-THERAPY Z\nEvent: Severe anaphylaxis during infusion. ICU required.", truth:{date:"2025-07-28",country:"JP",type:"Clinical Trial",init:"HN",age:"34",gen:"Female",prod:"RNA-THERAPY Z",llt:"ANAPHYLAXIS",pt:"Anaphylactic reaction",serious:"Yes"} },
+        { id:"FR-2025-230", type:"Literature",   complexity:"High",   docText:"Letter to editor, 2025-10\nCase: Pregnant woman exposed to ANTI-EPILEPTIC B in first trimester; infant born with cleft lip.", truth:{date:"2025-10-05",country:"FR",type:"Literature",init:"UNKNOWN",age:"28",gen:"Female",prod:"ANTI-EPILEPTIC B",llt:"CONGENITAL ANOMALY",pt:"Congenital malformation",serious:"Yes"} },
+        { id:"US-PREG-101", type:"Phone",        complexity:"High",   docText:"Call from Patient Registry.\nDate: 2025-11-10\nPatient: Female, 24. Drug: ISOTRETINOIN.\nEvent: Patient became pregnant while on therapy. Drug stopped immediately.", truth:{date:"2025-11-10",country:"US",type:"Spontaneous",init:"UNKNOWN",age:"24",gen:"Female",prod:"ISOTRETINOIN",llt:"PREGNANCY",pt:"Exposure during pregnancy",serious:"Yes"} },
+        { id:"UK-DEV-102",  type:"Fax",          complexity:"High",   docText:"Device Defect Report.\nDate: 2025-11-12\nProduct: INSULIN PUMP X.\nEvent: Pump failed to deliver bolus. Patient developed Hyperglycemia (Glucose 400 mg/dL). Hospitalized.", truth:{date:"2025-11-12",country:"UK",type:"Spontaneous",init:"UNKNOWN",age:"UNKNOWN",gen:"Unknown",prod:"INSULIN PUMP X",llt:"DEVICE FAILURE",pt:"Device failure",serious:"Yes"} },
+        { id:"IN-LACK-103", type:"Email",        complexity:"Medium", docText:"Clinic Report.\nDate: 2025-11-15\nPatient: Male, 50.\nDrug: ANTI-HYPERTENSIVE A.\nEvent: BP remains 180/100 after 2 weeks. Suspected Lack of Efficacy.", truth:{date:"2025-11-15",country:"IN",type:"Spontaneous",init:"UNKNOWN",age:"50",gen:"Male",prod:"ANTI-HYPERTENSIVE A",llt:"LACK OF EFFICACY",pt:"Drug ineffective",serious:"No"} },
+        { id:"DE-INT-104",  type:"Hospital Note",complexity:"High",   docText:"Admission Note.\nDate: 2025-11-18\nPatient: H.S (M, 65).\nEvent: Severe bleeding after taking WARFARIN and ASPIRIN together. INR 5.5.", truth:{date:"2025-11-18",country:"DE",type:"Spontaneous",init:"HS",age:"65",gen:"Male",prod:"WARFARIN + ASPIRIN",llt:"DRUG INTERACTION",pt:"Drug interaction",serious:"Yes"} },
+        { id:"JP-OFF-105",  type:"Literature",   complexity:"Medium", docText:"Journal: Ped. News 2025.\nCase: 5-year-old boy prescribed ADULT ANTIDEPRESSANT off-label for bedwetting. Developed somnolence.", truth:{date:"2025-11-20",country:"JP",type:"Literature",init:"UNKNOWN",age:"5",gen:"Male",prod:"ADULT ANTIDEPRESSANT",llt:"OFF LABEL USE",pt:"Off-label use",serious:"No"} },
+        { id:"AU-VAC-106",  type:"Phone",        complexity:"High",   docText:"Helpline Call.\nDate: 2025-11-22\nPatient: Female, 18. Vaccine: HPV VACCINE.\nEvent: Fainted (Syncope) 5 mins after injection. Minor concussion.", truth:{date:"2025-11-22",country:"AU",type:"Spontaneous",init:"UNKNOWN",age:"18",gen:"Female",prod:"HPV VACCINE",llt:"SYNCOPE",pt:"Syncope",serious:"No"} },
+        { id:"CN-DEATH-107",type:"Fax",          complexity:"High",   docText:"Coroner Report.\nDate: 2025-11-25\nDeceased: Male, 78.\nDrug: OPIOID ANALGESIC.\nEvent: Found dead. Toxicology shows high opioid levels. Respiratory depression suspected.", truth:{date:"2025-11-25",country:"CN",type:"Spontaneous",init:"UNKNOWN",age:"78",gen:"Male",prod:"OPIOID ANALGESIC",llt:"DEATH",pt:"Death",serious:"Yes"} },
+        { id:"US-SOC-108",  type:"Email",        complexity:"Medium", docText:"Social Media Screening.\nSource: Twitter. Date: 2025-11-28\nUser @PatientX: 'Took PILL Z yesterday and now my whole body is itching like crazy! #SideEffect'", truth:{date:"2025-11-28",country:"US",type:"Spontaneous",init:"UNKNOWN",age:"UNKNOWN",gen:"Unknown",prod:"PILL Z",llt:"ITCHING",pt:"Pruritus",serious:"No"} },
+        { id:"BR-QUAL-109", type:"Phone",        complexity:"Medium", docText:"Pharmacy Call.\nDate: 2025-11-30\nProduct: SYRUP B (Batch 123).\nEvent: Pharmacist noticed broken glass inside the bottle. No patient consumed it.", truth:{date:"2025-11-30",country:"BR",type:"Spontaneous",init:"UNKNOWN",age:"UNKNOWN",gen:"Unknown",prod:"SYRUP B",llt:"PRODUCT QUALITY ISSUE",pt:"Product quality issue",serious:"No"} },
+        { id:"ZA-OVER-110", type:"Hospital Note",complexity:"High",   docText:"ER Note.\nDate: 2025-12-01\nPatient: Female, 16.\nEvent: Intentional Overdose of PARACETAMOL (20 tablets). Liver enzymes elevated. Treated with NAC.", truth:{date:"2025-12-01",country:"ZA",type:"Spontaneous",init:"UNKNOWN",age:"16",gen:"Female",prod:"PARACETAMOL",llt:"INTENTIONAL OVERDOSE",pt:"Intentional overdose",serious:"Yes"} },
+        { id:"CA-MIS-111",  type:"Email",        complexity:"Low",    docText:"Nurse Report.\nDate: 2025-12-03\nPatient: Male, 70.\nEvent: Missed dose of ANTICOAGULANT yesterday. No adverse events occurred.", truth:{date:"2025-12-03",country:"CA",type:"Spontaneous",init:"UNKNOWN",age:"70",gen:"Male",prod:"ANTICOAGULANT",llt:"MISSED DOSE",pt:"Intentional product use issue",serious:"No"} },
+        { id:"FR-LEG-112",  type:"Email",        complexity:"High",   docText:"Legal Department Forward.\nDate: 2025-12-05\nSource: Lawyer Letter.\nClaim: Client developed Stevens-Johnson Syndrome after taking DRUG Q.", truth:{date:"2025-12-05",country:"FR",type:"Legal",init:"UNKNOWN",age:"UNKNOWN",gen:"Unknown",prod:"DRUG Q",llt:"SJS",pt:"Stevens-Johnson syndrome",serious:"Yes"} },
+        { id:"IN-ABUSE-113",type:"Hospital Note",complexity:"High",   docText:"Rehab Center Report.\nDate: 2025-12-08\nPatient: Male, 25.\nEvent: Admitted for addiction to PRESCRIPTION OPIOID. Uses drug for euphoria.", truth:{date:"2025-12-08",country:"IN",type:"Spontaneous",init:"UNKNOWN",age:"25",gen:"Male",prod:"PRESCRIPTION OPIOID",llt:"DRUG ABUSE",pt:"Drug abuse",serious:"Yes"} },
+        { id:"UK-PAT-114",  type:"Phone",        complexity:"Medium", docText:"Patient Call.\nDate: 2025-12-10\nPatient: Female, 40. Drug: ANTIBIOTIC T.\nEvent: 'Throat started closing up 10 mins after the pill'. Ambulance called.", truth:{date:"2025-12-10",country:"UK",type:"Spontaneous",init:"UNKNOWN",age:"40",gen:"Female",prod:"ANTIBIOTIC T",llt:"THROAT CLOSING",pt:"Pharyngeal oedema",serious:"Yes"} },
+        { id:"US-UNK-115",  type:"Email",        complexity:"Low",    docText:"Sales Rep Email.\nDate: 2025-12-12\nDoctor mentioned a patient had 'some stomach issues' with DRUG A. No other details.", truth:{date:"2025-12-12",country:"US",type:"Spontaneous",init:"UNKNOWN",age:"UNKNOWN",gen:"Unknown",prod:"DRUG A",llt:"STOMACH ISSUES",pt:"Abdominal discomfort",serious:"No"} },
+        { id:"US-2025-555", type:"Phone Report", complexity:"Low",    docText:"Phone call from caregiver\nDate: 2025-08-01\nPatient: C.T. (Female, 6 years)\nDrug: AMOXICILLIN suspension\nEvent: Mild diarrhea and abdominal pain for 2 days.", truth:{date:"2025-08-01",country:"US",type:"Spontaneous",init:"CT",age:"6",gen:"Female",prod:"AMOXICILLIN",llt:"DIARRHOEA",pt:"Diarrhoea",serious:"No"} }
+    ];
+
+    let activeCase = null;
+    let isReadOnly = false;
+    let completedCases = [];
+
+    // ── STORAGE ───────────────────────────────────────────────────────────────
+    function loadFromStorage() {
+        try { completedCases = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+        catch(e) { completedCases = []; }
+    }
+    function saveToStorage() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(completedCases)); } catch(e) {}
+    }
+    function resetAllData() {
+        if (!confirm("⚠️ This will permanently delete ALL completed case records.\n\nAre you sure?")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        completedCases = [];
+        renderDashboard();
+        alert("✅ Progress reset. All cases are available again.");
+    }
+
+    // ── INIT ──────────────────────────────────────────────────────────────────
+    loadFromStorage();
+    renderDashboard();
+
+    // ── DASHBOARD ─────────────────────────────────────────────────────────────
+    function showDashboard() {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.getElementById('dashboard-view').classList.add('active');
+        renderDashboard();
+    }
+
+    function renderDashboard() {
+        // Pending
+        const tbody = document.getElementById('pending-table-body');
+        tbody.innerHTML = "";
+        allCases.forEach(c => {
+            if (!completedCases.some(d => d.id === c.id)) {
+                tbody.innerHTML += `<tr>
+                    <td><b>${c.id}</b></td><td>${c.type}</td><td>${c.complexity}</td>
+                    <td><button class="action-btn" onclick="loadCase('${c.id}',false)">Start Case</button></td>
+                </tr>`;
+            }
+        });
+        if (!tbody.innerHTML) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#28a745;font-weight:bold;">🎉 All cases completed!</td></tr>`;
+
+        // Completed
+        const doneBody = document.getElementById('completed-table-body');
+        if (completedCases.length > 0) {
+            doneBody.innerHTML = "";
+            completedCases.forEach(c => {
+                const badge = c.serious === "Yes"
+                    ? `<span style="background:#f8d7da;color:#721c24;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:bold;margin-left:4px;">SAE</span>`
+                    : `<span style="background:#d4edda;color:#155724;padding:2px 6px;border-radius:3px;font-size:10px;margin-left:4px;">Non-Serious</span>`;
+                doneBody.innerHTML += `<tr>
+                    <td><b>${c.id}</b></td>
+                    <td>${c.pat}</td>
+                    <td>${c.prod}</td>
+                    <td>${c.pt}${badge}</td>
+                    <td class="status-done">🔒 Locked</td>
+                    <td><button class="review-btn" onclick="loadCase('${c.id}',true)">👁 Review</button></td>
+                </tr>`;
+            });
+            document.getElementById('storage-badge').textContent = `💾 ${completedCases.length} Saved`;
+        } else {
+            doneBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;">No cases completed yet.</td></tr>`;
+            document.getElementById('storage-badge').textContent = `💾 Auto-Saved`;
+        }
+    }
+
+    // ── LOAD CASE (new entry OR read-only review) ─────────────────────────────
+    function loadCase(id, reviewMode) {
+        activeCase = allCases.find(c => c.id === id);
+        isReadOnly = reviewMode;
+
+        // Clear fields
+        document.querySelectorAll('#main-form-area input, #main-form-area select, #main-form-area textarea')
+            .forEach(el => { el.value = ''; el.classList.remove('input-correct','input-wrong'); });
+
+        const formArea  = document.getElementById('main-form-area');
+        const banner    = document.getElementById('readonly-banner');
+        const summaryBox = document.getElementById('review-summary-box');
+
+        if (reviewMode) {
+            // Fill saved data
+            const saved = completedCases.find(c => c.id === id);
+            if (saved && saved.savedData) {
+                const d = saved.savedData;
+                document.getElementById('in_date').value      = d.date      || '';
+                document.getElementById('in_country').value   = d.country   || '';
+                document.getElementById('in_type').value      = d.type      || '';
+                document.getElementById('in_init').value      = d.init      || '';
+                document.getElementById('in_age').value       = d.age       || '';
+                document.getElementById('in_gen').value       = d.gen       || '';
+                document.getElementById('in_prod').value      = d.prod      || '';
+                document.getElementById('in_ind').value       = d.ind       || '';
+                document.getElementById('in_llt').value       = d.llt       || '';
+                document.getElementById('in_pt').value        = d.pt        || '';
+                document.getElementById('in_serious').value   = d.serious   || '';
+                document.getElementById('in_narrative').value = d.narrative || '';
+                // Colour all green
+                ['in_date','in_country','in_type','in_init','in_age','in_gen','in_prod','in_llt','in_pt','in_serious']
+                    .forEach(fid => document.getElementById(fid).classList.add('input-correct'));
+            }
+            buildReviewSummary(completedCases.find(c => c.id === id));
+            summaryBox.style.display = 'block';
+            formArea.classList.add('readonly-mode');
+            banner.classList.add('show');
+            ['btn-qc','btn-code','btn-save'].forEach(b => document.getElementById(b).classList.add('disabled'));
+            document.getElementById('nar-tip').style.display = 'none';
+            document.getElementById('nar-template-btn').style.display = 'none';
+        } else {
+            summaryBox.style.display = 'none';
+            formArea.classList.remove('readonly-mode');
+            banner.classList.remove('show');
+            ['btn-qc','btn-code','btn-save'].forEach(b => document.getElementById(b).classList.remove('disabled'));
+            document.getElementById('nar-tip').style.display = '';
+            document.getElementById('nar-template-btn').style.display = '';
+        }
+
+        document.getElementById('doc-content').innerText = activeCase.docText;
+        document.getElementById('active-case-id').innerText = "Case: " + activeCase.id + (isReadOnly ? "  [READ-ONLY]" : "");
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.getElementById('workstation-view').classList.add('active');
+        setTab('gen');
+    }
+
+    function buildReviewSummary(saved) {
+        if (!saved) return;
+        const d = saved.savedData || {};
+        const rows = [
+            ["Case ID", saved.id], ["Patient Initials", d.init], ["Age", d.age],
+            ["Gender", d.gen], ["Country", d.country], ["Report Type", d.type],
+            ["Suspect Product", d.prod], ["Reported Term (LLT)", d.llt],
+            ["MedDRA PT", d.pt],
+            ["Seriousness", d.serious === "Yes" ? "⚠️ Serious (SAE)" : "✅ Non-Serious"]
+        ];
+        document.getElementById('review-summary-content').innerHTML =
+            rows.map(([k,v]) => `<div class="review-row"><div class="review-key">${k}:</div><div class="review-val">${v||'—'}</div></div>`).join('');
+    }
+
+    // ── TABS ──────────────────────────────────────────────────────────────────
+    function setTab(id) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.tree-item').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-'+id).classList.add('active');
+    }
+
+    // ── TOOLS ─────────────────────────────────────────────────────────────────
+    function insertTemplate() {
+        if (isReadOnly) return;
+        document.getElementById('in_narrative').value =
+            "CASE NARRATIVE:\n\nThis case involves a [AGE]-year-old [GENDER] patient from [COUNTRY], who experienced [EVENT] following the administration of [DRUG].\n\nClinical Course:\nThe event started on [DATE].\nAction taken with the drug was [ACTION].\nThe outcome of the event was [OUTCOME].\n\nReporter Comment:\n[ENTER COMMENT]";
+    }
+
+    function autoCode() {
+        if (!activeCase || isReadOnly) return;
+        if (!document.getElementById('in_llt').value.trim()) { alert("Enter Reported Term first."); return; }
+        const pt = document.getElementById('in_pt');
+        pt.value = "🔍 Coding..."; pt.style.color = "blue";
+        setTimeout(() => { pt.value = activeCase.truth.pt; pt.style.color = "black"; pt.classList.add('input-correct'); }, 800);
+    }
+
+    function runQC() {
+        if (!activeCase || isReadOnly) return;
+        let errors = 0, reportHTML = "";
+
+        function validate(id, key, label) {
+            const el = document.getElementById(id);
+            const userVal = el.value.trim();
+            const trueVal = activeCase.truth[key];
+            let isMatch = false;
+            if (String(trueVal).toUpperCase() === "UNKNOWN" && (userVal === "" || userVal.toUpperCase() === "UNKNOWN")) isMatch = true;
+            else if (id === 'in_age') { if (Math.abs(parseFloat(userVal) - parseFloat(trueVal)) < 0.1) isMatch = true; }
+            else if (userVal.toLowerCase() === String(trueVal).toLowerCase()) isMatch = true;
+
+            if (isMatch) { el.classList.add('input-correct'); el.classList.remove('input-wrong'); }
+            else { el.classList.add('input-wrong'); el.classList.remove('input-correct');
+                reportHTML += `<div class="qc-item"><span class="qc-label">${label}:</span> <span class="qc-actual">"${userVal}"</span> <span class="qc-expected">✔ Expected: "${trueVal}"</span></div>`; errors++; }
+        }
+
+        validate('in_date','date','Date'); validate('in_country','country','Country'); validate('in_type','type','Type');
+        validate('in_init','init','Initials'); validate('in_age','age','Age'); validate('in_gen','gen','Gender');
+        validate('in_prod','prod','Product'); validate('in_serious','serious','Serious');
+        if (document.getElementById('in_pt').value !== activeCase.truth.pt) {
+            reportHTML += `<div class="qc-item"><span class="qc-label">MedDRA PT:</span> <span class="qc-actual">Mismatch / Missing</span></div>`; errors++;
+        }
+        const narText = document.getElementById('in_narrative').value.toLowerCase();
+        if (narText.length < 20) {
+            reportHTML += `<div class="qc-item" style="color:red;"><b>Narrative:</b> Too short. Please write a full case summary.</div>`; errors++;
+        } else if (!narText.includes(activeCase.truth.prod.split(' ')[0].toLowerCase())) {
+            reportHTML += `<div class="qc-item" style="color:orange;"><b>Narrative:</b> Mention the suspect drug (${activeCase.truth.prod}).</div>`; errors++;
+        }
+
+        document.getElementById('qc-content').innerHTML = errors === 0
+            ? "<h3 style='color:green;text-align:center;'>✅ QC PASSED</h3><p style='text-align:center;'>Data is accurate. You can now Save &amp; Exit.</p>"
+            : `<div style="color:red;margin-bottom:10px;">Found <b>${errors}</b> discrepanc${errors===1?'y':'ies'}:</div>${reportHTML}`;
+        document.getElementById('qc-modal').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function closeQC() {
+        document.getElementById('qc-modal').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function finishCase() {
+        if (!activeCase || isReadOnly) return;
+        if (document.querySelectorAll('.input-wrong').length > 0 || document.querySelectorAll('.input-correct').length < 5) {
+            alert("⚠️ Validation Required\n\nPlease Run QC and fix all errors before saving."); return;
+        }
+        // Save ALL entered values so they can be reviewed later
+        const savedData = {
+            date:      document.getElementById('in_date').value,
+            country:   document.getElementById('in_country').value,
+            type:      document.getElementById('in_type').value,
+            init:      document.getElementById('in_init').value,
+            age:       document.getElementById('in_age').value,
+            gen:       document.getElementById('in_gen').value,
+            prod:      document.getElementById('in_prod').value,
+            ind:       document.getElementById('in_ind').value,
+            llt:       document.getElementById('in_llt').value,
+            pt:        document.getElementById('in_pt').value,
+            serious:   document.getElementById('in_serious').value,
+            narrative: document.getElementById('in_narrative').value
+        };
+        completedCases.push({
+            id: activeCase.id,
+            pat: activeCase.truth.init,
+            prod: activeCase.truth.prod,
+            pt: activeCase.truth.pt,
+            serious: activeCase.truth.serious,
+            savedData
+        });
+        saveToStorage();
+        alert("✅ Case " + activeCase.id + " locked and saved!\n\nClick '👁 Review' on the dashboard anytime to view it.");
+        showDashboard();
+    }
+</script>
+</body>
+</html>
